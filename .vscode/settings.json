@@ -22,7 +22,11 @@
       "type_traits": "cpp",
       "string": "cpp",
       "array": "cpp",
-      "stdexcept": "cpp"
+      "stdexcept": "cpp",
+      "tuple": "cpp",
+      "utility": "cpp",
+      "system_error": "cpp",
+      "*.ipp": "cpp"
    },
     "editor.tabSize": 3
 }
