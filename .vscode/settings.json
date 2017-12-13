@@ -26,7 +26,21 @@
       "tuple": "cpp",
       "utility": "cpp",
       "system_error": "cpp",
-      "*.ipp": "cpp"
+      "*.ipp": "cpp",
+      "condition_variable": "cpp",
+      "algorithm": "cpp",
+      "cmath": "cpp",
+      "csignal": "cpp",
+      "cstdarg": "cpp",
+      "cstddef": "cpp",
+      "cstring": "cpp",
+      "ctime": "cpp",
+      "atomic": "cpp",
+      "chrono": "cpp",
+      "functional": "cpp",
+      "mutex": "cpp",
+      "ratio": "cpp",
+      "thread": "cpp"
    },
     "editor.tabSize": 3
 }

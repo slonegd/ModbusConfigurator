@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ncurses.h>
+#include <ncursesw/ncurses.h>
 #include <string>
 #include <algorithm>
 #include <wchar.h>
@@ -12,14 +12,14 @@
 namespace NCURSES {
 
    // рисует сроку по координатом с цветом
-   void mvwprintColor (int y, int x, const std::wstring& str, int color)
+   inline void mvwprintColor (int y, int x, const std::wstring& str, int color)
    {
       attron (COLOR_PAIR(color));
       mvaddwstr (y, x, str.c_str());
       attroff (COLOR_PAIR(color));
    }
 
-   void mvprintColor (int y, int x, const std::string& str, int color)
+   inline void mvprintColor (int y, int x, const std::string& str, int color)
    {
       attron (COLOR_PAIR(color));
       mvaddstr (y, x, str.c_str());
@@ -29,7 +29,7 @@ namespace NCURSES {
    enum color {
       green = 1, red, blue, black, tBlue, tGreen, tRed
    };
-   void ColorPairInit()
+   inline void ColorPairInit()
    {
       start_color();
       init_pair (green, COLOR_BLACK, COLOR_GREEN);
@@ -336,12 +336,12 @@ public:
       currentX++;
    }
 
-   void addData (char* buf, int qty, int color_)
+   void addData (uint8_t* buf, int qty, int color_)
    {
       stringstream tmp;
       tmp.fill( '0' ); 
       for (int i = 0; i < qty; ++i)
-         tmp << uppercase << setw(2) << hex << (int)buf[i] << ' ';
+         tmp << uppercase << setw(2) << hex << (uint)buf[i] << ' ';
       data[currentString] += tmp.str();
       mvprintColor ( currentY, posX + 1, data[currentString], color_ );
    }
@@ -361,3 +361,4 @@ public:
    }
    
 };
+

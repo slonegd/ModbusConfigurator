@@ -1,10 +1,10 @@
-//#define NCURSES_CH_T wchar_t
 
 #include <stdint.h>
 #include <locale.h>
 #include <wchar.h>
-#include <ncursesw/ncurses.h>
+//#include <ncursesw/ncurses.h>
 #include <ncursesMenu.h>
+#include <MBmaster.h>
 #include <string>
 
 using namespace std;
@@ -115,15 +115,18 @@ int main()
          break;
 
       case tryConnect:
-         char buf[] = { 0x12, 0x2F };
+
          auto stream = ModbusStreamViever (addressValue.weight + addressValue.posX + 1);
-         stream.addData (buf, 2, color::tBlue);
-         stream.addData (buf, 2, color::tBlue);
-         stream.endLine();
-         stream.addData (buf, 5, color::tGreen);
-         stream.endLine();
-         stream.addString ("timeout", color::tRed);
-         work = false;
+         auto modbus = MBmaster(stream);
+         using State = MBmaster::State;
+         using MBfunc = MBmaster::MBfunc;
+         int devAdr, regQty, regAdr;
+         devAdr = 1;
+         regAdr = 4;
+         modbus.tx_rx (MBfunc::Read_Registers_03, devAdr, regAdr, 19);
+         if (modbus.state == State::transmit)
+            work = false;
+         // work = false;
          break;
       } // switch (state)
 
