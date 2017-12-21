@@ -69,12 +69,13 @@ public:
    bool enter;
 
    template <uint8_t n>
-	PullDownMenu (std::wstring (&name)[n], int posY, int posX) :
-	 	name (name), qty(n), posY (posY), posX (posX), weight(0), curChoice(1), enter(false)
+	PullDownMenu (std::wstring (&name)[n], int posY, int posX) 
+      : posY (posY), posX (posX), weight(0), name (name), qty(n),
+        curChoice(1), enter(false)
 	{ 
       //this->name = name;
       for (uint8_t i = 0; i < qty; ++i)
-         weight = (name[i].size() > weight) ? name[i].size() : weight;
+         weight = ( (int)name[i].size() > weight) ? name[i].size() : weight;
       const int addSpace = 3; // пробел до и после
       weight += addSpace; 
 
@@ -175,13 +176,13 @@ public:
 
    ChangeValMenu (const std::wstring& name, int posY, int posX,
                   int value, int valMin, int valMax)
-      : posY (posY), posX (posX),
-        value (value), valMin (valMin), valMax (valMax), preValue (0),
+      : value (value), valMin (valMin), valMax (valMax), preValue (0),
+        posY (posY), posX (posX),
         enter (false),  setValue (false)
    {
       weight = std::max ( name.size() + 3, 2 * to_wstring(valMax).size() + 4);
       this->name = L"";
-      for (int i = 0; i < weight - name.size() - 2; ++i)
+      for (int i = 0; i < weight - (int)name.size() - 2; ++i)
          this->name += L' ';
       this->name += name + L" |";
       drawName();
@@ -306,6 +307,12 @@ public:
       for (int i = 0; i < 3; ++i)
          mvwprintColor (posY + i, posX, tmpstr, color::black);
    }
+   void show()
+   {
+      enter = false;
+      drawName();
+      drawCurrent (green);
+   }
 private:
    void drawName()
    {
@@ -329,8 +336,8 @@ public:
    int currentY;
    int currentX;
 
-   ModbusStreamViever(int posX)
-      : currentY(0), posX(posX), currentX(posX), currentString(0)
+   ModbusStreamViever(int posX, int posY)
+      : posX(posX), currentString(0), currentY(posY), currentX(posX) 
    {
       mvprintw (currentY, currentX, "|");
       currentX++;

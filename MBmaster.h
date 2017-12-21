@@ -2,20 +2,28 @@
 
 #include <stdint.h>
 #include <cstring>
-//#include <ncurses.h>
-#include "ncursesMenu.h"
-#include <tuple>
+#include <ncursesMenu.h>
+#include <serial.h>
 #include <crc.h>
+
+//#include <termios.h>
+//#include <fcntl.h>
+//#include <unistd.h>
+
+
+
+const string portFile_ = "/dev/ttyUSB0";
 
 class MBmaster
 {
 public:
    uint8_t buf[255];
-   uint8_t byteQty;
+   uint16_t readBuf[255];
    ModbusStreamViever& stream;
+   SerialPort port;
 
-   MBmaster (ModbusStreamViever& stream)
-      : stream(stream), state(pack)
+   MBmaster (ModbusStreamViever& stream, std::string portFile)
+      : stream(stream), port(SerialPort(portFile)), state(pack)//, descriptor(3)
    {   }
 
 	enum State {            // состояние класса
@@ -23,16 +31,26 @@ public:
 		regErr		  = 2,   // из спецификации на модбас
 		valueErr      = 3,   // из спецификации на модбас
 		CRCerr,              // битый ответ
+      answerErr,
+      notFullAnswerErr,
+      unknowErr,
 		timeoutErr,	
 		doneNoErr,           // всё норм, можно работать дальше
       pack,                // упаковка пакета
       transmit,
+      receive,
+      handle03,
+      handle05,
+      handle16
 	} state;
    enum MBfunc {
       Read_Registers_03    = 3,
       Force_Single_Coil_05 = 5,
       Write_Registers_16   = 16
    };
+
+   using Boudrate = SerialPort::Boudrate;
+   using Parity = SerialPort::Parity;
 
 
    template<typename ... Types>
@@ -44,91 +62,150 @@ public:
       // или количество регистров для чтения
       Types ... args )
    {
-      auto arg0 = get<0>(make_tuple(args...));
       uint16_t crc;
 
       while (1) {
          switch (state) {
+            case doneNoErr:
+            case timeoutErr:
+            case CRCerr:
+            case funcErr:
+            case regErr:
+            case valueErr:
+            case notFullAnswerErr:
+            case unknowErr:
+               state = pack;
+               break;
 
-         case doneNoErr:
-         case timeoutErr:
-         case CRCerr:
-         case funcErr:
-         case regErr:
-         case valueErr:
-            state = pack;
-            break;
-
-
-         case pack:
-            buf[0] = devAdr;
-            buf[1] = f;
-            buf[2] = regAdr >> 8;
-            buf[3] = regAdr;
-            byteQty = 4;
-            if (f == Force_Single_Coil_05) {
-               buf[4] = arg0 ? 0xFF : 0x00;
-               buf[5] = 0x00;
-               byteQty = 6;
-            } else if (f == Read_Registers_03) {
-               buf[4] = 0;
-               buf[5] = arg0;
-               byteQty = 6;
-            } else if (f == Write_Registers_16) {
-               byteQty = 7;
-               for (auto&& arg : initializer_list<uint16_t>{(uint16_t)args...} ) {
-                  buf[byteQty++] = arg >> 8;
-                  buf[byteQty++] = arg;
+            case pack:
+               buf[0] = devAdr;
+               buf[1] = f;
+               buf[2] = regAdr >> 8;
+               buf[3] = regAdr;
+               byteQty = 4;
+               if (f == Force_Single_Coil_05) {
+                  buf[4] = getArg1(args...) ? 0xFF : 0x00;
+                  buf[5] = 0x00;
+                  byteQty = 6;
+               } else if (f == Read_Registers_03) {
+                  buf[4] = 0;
+                  buf[5] = getArg1(args...);
+                  byteQty = 6;
+               } else if (f == Write_Registers_16) {
+                  byteQty = 7;
+                  for (auto&& arg : initializer_list<uint16_t>{(uint16_t)args...} ) {
+                     buf[byteQty++] = arg >> 8;
+                     buf[byteQty++] = arg;
+                  }
+                  buf[4] = 0;
+                  buf[5] = (byteQty - 7) / 2;
+                  buf[6] = byteQty - 7;
                }
-               buf[4] = 0;
-               buf[5] = (byteQty - 7) / 2;
-               buf[6] = byteQty - 7;
-            }
-            crc = crc16 (buf, byteQty);
-            buf[byteQty++] = crc;
-            buf[byteQty++] = crc >> 8;
-            stream.addData (buf, byteQty, NCURSES::color::tBlue);
-            stream.endLine();
-            state = transmit;
-            break;
+               crc = crc16 (buf, byteQty);
+               buf[byteQty++] = crc;
+               buf[byteQty++] = crc >> 8;
+               stream.addData (buf, byteQty, NCURSES::color::tBlue);
+               stream.endLine();
+               state = transmit;
+               break;
+
+            case transmit:
+               if ( port.write_ (buf, byteQty) ) {
+                  byteQty = 0;
+                  state = receive;              
+               }
+               return;
+               break;
+
+            case receive:
+               if (port.read_ (buf)) {
+                  if ( port.isTimeout() ) {
+                     stream.addString ("Timeout", color::tRed);
+                     state = timeoutErr;
+                  } else {
+                     byteQty = port.getReadQty();
+                     stream.addData (buf, byteQty, NCURSES::color::tGreen);
+                     stream.endLine();
+                     state = f == Read_Registers_03    ? handle03 :
+                           f == Force_Single_Coil_05 ? handle05 :
+                           f == Write_Registers_16   ? handle16 :
+                                                         handle05;
+                  }
+               }
+               return;
+               break;
             
+            case handle03:
+               if ( byteQty != (2*getArg1(args...) + 5) ) {
+                  stream.addString ("Not full answer error", color::tRed);
+                  state = notFullAnswerErr;
+                  return;
+               } else  if ( otherErrors (devAdr) )
+                  return;
+               for (uint8_t i = 0; i < getArg1(args...); ++i)
+                  readBuf[i] = ((uint16_t)(buf[3+2*i]) << 8) | buf[3+2*i+1];
+               
+               // memcpy (readBuf, buf + 3, 2*getArg1(args...) );
+               state = doneNoErr;
+               return;
+               break;
 
-         case transmit:
-            return;
+            case handle05:
+            case handle16:
+               if ( byteQty != 8 ) {
+                  stream.addString ("Not full answer error", color::tRed);
+                  state = notFullAnswerErr;
+                  return;
+               } else  if ( otherErrors (devAdr) )
+                  return;
+               state = doneNoErr;
+               return;
+               break;
 
-            break;
+            default: 
+               state = answerErr;
+               break;
          } // switch (state)
       } // while (1)
-
-   };
-
-   enum Boudrate {
-      br9600   = 9600,
-      br14400  = 14400,
-      br19200  = 19200,
-      br28800  = 28800,
-      br38400  = 38400,
-      br57600  = 57600,
-      br76800  = 76800,
-      br115200 = 115200
-   };
-   enum Parity {
-      none,
-      even,
-      odd
-   };
-   bool openPort (
-      Boudrate boudrate,
-      Parity parity,
-      int stopBits,
-      int msTimeout
-   ) {}
-/*
-private:
-   template <class T, typename ... Types>
-   initializer_list<uint16_t> getArgsWithoutFirst (T arg0, Types ...args)
-   {
-      return initializer_list<uint16_t>{(uint16_t)args...};
    }
-*/
+
+   bool isError()
+   {
+      return (state >= funcErr) && (state <= timeoutErr);
+   }
+
+
+
+private:
+   volatile uint8_t byteQty;
+
+   template <class T, typename ... Types>
+   T getArg1 (T arg1, Types ... otherArgs)
+   {
+      return arg1;
+   }
+
+
+   bool otherErrors (int& devAdr)
+   {
+      uint16_t crc = crc16 (buf, byteQty - 2);
+      if ( buf[byteQty-1] != (crc >> 8) || buf[byteQty-2] != (crc & 0xFF) ) {
+         stream.addString ("CRC error", color::tRed);
+         state = CRCerr;
+         return true;
+      } else if ( buf[0] != devAdr ) {
+         stream.addString ("Wrong answer error", color::tRed);
+         state = answerErr;
+         return true;
+      } else if ( (buf[1] & 0b1000'0000) != 0 ) {
+         state = (State)buf[2];
+         state == funcErr  ? stream.addString ("Wrong function error", color::tRed) :
+         state == regErr   ? stream.addString ("Registr address error", color::tRed) :
+         state == valueErr ? stream.addString ("Wrong value error", color::tRed) :
+                             stream.addString ("Unknow error", color::tRed);
+         return true;
+      }
+      return false;
+   }
+
 };
