@@ -1,23 +1,13 @@
 #pragma once
 
-#include <stdint.h>
 #include <cstring>
-#include <ncursesMenu.h>
+#include <ncursesWidgets.h>
 #include <serial.h>
 #include <crc.h>
-
-//#include <termios.h>
-//#include <fcntl.h>
-//#include <unistd.h>
-
-
-
-const string portFile_ = "/dev/ttyUSB0";
 
 class MBmaster
 {
 public:
-   uint8_t buf[255];
    uint16_t readBuf[255];
    ModbusStreamViever& stream;
    SerialPort port;
@@ -27,15 +17,15 @@ public:
    {   }
 
 	enum State {            // состояние класса
-      funcErr 	     = 1,   // из спецификации на модбас
-		regErr		  = 2,   // из спецификации на модбас
-		valueErr      = 3,   // из спецификации на модбас
-		CRCerr,              // битый ответ
-      answerErr,
-      notFullAnswerErr,
+      funcErr       = 1,   // из спецификации на модбас
+      regErr        = 2,   // из спецификации на модбас
+      valueErr      = 3,   // из спецификации на модбас
+      CRCerr,              // битый ответ
+      answerErr,           // другие и неизвестные ошибки ответа
+      notFullAnswerErr,    // размер ответа меньше ожидаемого
       unknowErr,
-		timeoutErr,	
-		doneNoErr,           // всё норм, можно работать дальше
+      timeoutErr,
+      doneNoErr,           // всё норм, можно работать дальше
       pack,                // упаковка пакета
       transmit,
       receive,
@@ -51,7 +41,6 @@ public:
 
    using Boudrate = SerialPort::Boudrate;
    using Parity = SerialPort::Parity;
-
 
    template<typename ... Types>
    void tx_rx (
@@ -118,7 +107,7 @@ public:
                break;
 
             case receive:
-               if (port.read_ (buf)) {
+               if ( port.read_ (buf) ) {
                   if ( port.isTimeout() ) {
                      stream.addString ("Timeout", color::tRed);
                      state = timeoutErr;
@@ -127,14 +116,14 @@ public:
                      stream.addData (buf, byteQty, NCURSES::color::tGreen);
                      stream.endLine();
                      state = f == Read_Registers_03    ? handle03 :
-                           f == Force_Single_Coil_05 ? handle05 :
-                           f == Write_Registers_16   ? handle16 :
+                             f == Force_Single_Coil_05 ? handle05 :
+                             f == Write_Registers_16   ? handle16 :
                                                          handle05;
                   }
                }
                return;
                break;
-            
+
             case handle03:
                if ( byteQty != (2*getArg1(args...) + 5) ) {
                   stream.addString ("Not full answer error", color::tRed);
@@ -144,8 +133,6 @@ public:
                   return;
                for (uint8_t i = 0; i < getArg1(args...); ++i)
                   readBuf[i] = ((uint16_t)(buf[3+2*i]) << 8) | buf[3+2*i+1];
-               
-               // memcpy (readBuf, buf + 3, 2*getArg1(args...) );
                state = doneNoErr;
                return;
                break;
@@ -169,15 +156,17 @@ public:
       } // while (1)
    }
 
+
    bool isError()
    {
       return (state >= funcErr) && (state <= timeoutErr);
    }
 
 
-
 private:
+   uint8_t buf[255];
    volatile uint8_t byteQty;
+
 
    template <class T, typename ... Types>
    T getArg1 (T arg1, Types ... otherArgs)

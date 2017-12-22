@@ -40,7 +40,11 @@
       "functional": "cpp",
       "mutex": "cpp",
       "ratio": "cpp",
-      "thread": "cpp"
+      "thread": "cpp",
+      "iomanip": "cpp",
+      "sstream": "cpp"
    },
-    "editor.tabSize": 3
+   "editor.tabSize": 3,
+   "C_Cpp.intelliSenseEngineFallback": "Enabled",
+   "C_Cpp.errorSquiggles": "Disabled"
 }

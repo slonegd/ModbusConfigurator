@@ -5,18 +5,14 @@
 #include <unistd.h>
 #include <string>
 #include <stdint.h>
-//#include <sys/select.h>
-
-
-
+#include <sys/select.h>
 
 class SerialPort
 {
 public:
 
    SerialPort (std::string portFile) 
-      : portFile(portFile), descriptor(-1), readState(start),
-        open__(false), work(false)
+      : portFile(portFile), descriptor(-1), open__(false), work(false)
    {  }
 
    const std::string portFile;
@@ -85,8 +81,8 @@ public:
       attr.c_iflag &= ~( IXON | IXOFF | IXANY | INLCR | IGNCR | ICRNL );
 
       tcsetattr (descriptor, TCSANOW, &attr);
+
       open__ = true;
-      // this->boudrate = (int)boudrate;
       usEndMes = 35 * 1000000 / (int)boudrate;
       
       return true;
@@ -114,7 +110,7 @@ public:
          } else {
             FD_ZERO (&fds);
             FD_SET (descriptor, &fds);
-            timeoutVal.tv_usec = byteQty == 0 ? 200000 : 35 * 1000000 / 9600;
+            timeoutVal.tv_usec = byteQty == 0 ? 200000 : usEndMes;
             if ( select (descriptor + 1, &fds, NULL, NULL, &timeoutVal) ) {
                byteQty += read (descriptor, &buf[byteQty], 255);
             } else {
@@ -136,10 +132,6 @@ public:
 private:
    int descriptor;
    int byteQty;
-   enum ReadState {
-      start,
-      read__
-   } readState;
    bool timeout;
    bool open__;
    bool work;

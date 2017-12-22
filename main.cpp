@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <locale.h>
 #include <wchar.h>
-#include <ncursesMenu.h>
+#include <ncursesWidgets.h>
 #include <MBmaster.h>
 #include <string>
 
@@ -16,29 +16,23 @@ int main()
    setlocale (LC_ALL, "");
 
    wstring boudrate[] = {
-      L"boudrate",
-      L"9600",
-      //L"14400",
-      L"19200",
-      //L"28800",
-      L"38400",
-      L"57600",
-      //L"76800",
-      L"115200"
+      L"boudrate", L"9600", L"19200", L"38400", L"57600", L"115200"
    };
    wstring parity[] = {
-      L"проверка",
-      L"отсутсвует",
-      L"на чётность",
-      L"на нечётность"
+      L"проверка", L"отсутсвует", L"на чётность", L"на нечётность"
    };
    wstring stopBits[] = {
-      L"стоп биты",
-      L"1",
-      L"2"
+      L"стоп биты", L"1", L"2"
+   };
+   wstring open[] = {
+      L"открыть", L"закрыть"
+   };
+   wstring connect[] = {
+      L"подключиться", L"отключиться"
    };
 
-   system("resize -s 40 150");
+   //system("resize -s 0 0");
+   system("wmctrl -r :ACTIVE: -b add,fullscreen");
    initscr();      // Переход в curses-режим
    curs_set (0);   // невидимый курсор
    noecho();       // не отображать вводимые символы
@@ -49,21 +43,22 @@ int main()
    auto parityMenu   = PullDownMenu(parity,    0, boudrateMenu.weight);
    auto stoBitsMenu  = PullDownMenu(stopBits,  0, parityMenu.weight + parityMenu.posX);
    auto addressValue = ChangeValMenu(L"адрес", 0, stoBitsMenu.weight + stoBitsMenu.posX,
-                                     1, 1, 255
-                       );
-   auto connectBut   = Button (L"подключиться", 0, addressValue.weight + addressValue.posX);
+                                     1, 1, 255 );
+   auto openBut      = Button ( open, 4, 0);
+   auto connectBut   = Button ( connect, 4, openBut.weight);
 
-   uint8_t menuQty = 5;
+   uint8_t menuQty = 6;
 
-   IkeyboardProcessing* menu[menuQty] = {
+   Iwidget* menu[menuQty] = {
       &boudrateMenu,
       &parityMenu,
       &stoBitsMenu,
       &addressValue,
+      &openBut,
       &connectBut
    };
 
-   auto stream = ModbusStreamViever (addressValue.weight + addressValue.posX + 1, 3);
+   auto stream = ModbusStreamViever (addressValue.weight + addressValue.posX + 1, 0);
    auto modbus = MBmaster(stream, portFile);
    using MBstate = MBmaster::State;
    using MBfunc = MBmaster::MBfunc;
@@ -83,12 +78,27 @@ int main()
       switch (state) {
 
       case startMenu:
-         //int ch;
-         wchar_t ch;
-         ch = getch();
-         switch (ch) {
-            case KEY_UP:   menu[current]->upHandler();    break;
-            case KEY_DOWN: menu[current]->downHandler();  break;
+         wchar_t key;
+         key = getch();
+         switch (key) {
+            case KEY_UP:
+               if ( menu[current]->isEnter() )
+                  menu[current]->upHandler();
+               else {
+                  menu[current]->drawCurrent(color::black);
+                  current = 0;
+                  menu[current]->drawCurrent(color::green);
+               }
+               break;
+            case KEY_DOWN:
+               if ( menu[current]->isEnter() )
+                  menu[current]->downHandler();
+               else {
+                  menu[current]->drawCurrent(color::black);
+                  current = 4;
+                  menu[current]->drawCurrent(color::green);
+               }
+               break;
             case '\n':     menu[current]->enterHandler(); break;
             case KEY_LEFT:
                if ( !menu[current]->isEnter() && current > 0 ) {
@@ -105,12 +115,11 @@ int main()
                }
                break;
             case KEY_END: work = false; break; 
-            default: menu[current]->enterValHandler(ch);  break;
+            default: menu[current]->enterValHandler(key);  break;
 
-         } // switch (ch)
+         } // switch (key)
 
-         if ( connectBut.isEnter() ) {
-            connectBut.hide();
+         if ( connectBut.push ) {
             state = openPort;
          }
          break;
@@ -135,24 +144,22 @@ int main()
          } else {
             stream.addString ("Can`t open " + portFile, NCURSES::color::tRed);
             state = startMenu;
-            connectBut.show();
+            connectBut.push = false;
          }
-
          break;
 
       case tryConnect:
          int devAdr, regAdr;
          devAdr = addressValue.value;
-         regAdr = 4;
-         modbus.tx_rx (MBfunc::Read_Registers_03, devAdr, regAdr, 19);
+         regAdr = 0;
+         modbus.tx_rx (MBfunc::Read_Registers_03, devAdr, regAdr, 4);
          if ( modbus.state == MBstate::doneNoErr ) {
             state = startMenu;
-            connectBut.show();
+            connectBut.push = false;
          } else if ( modbus.isError() ) {
             state = startMenu;
-            connectBut.show();
+            connectBut.push = false;
          }
-         // work = false;
          break;
       } // switch (state)
 
@@ -160,7 +167,7 @@ int main()
 
 
 
-   getch();
+   // getch();
    endwin();       // Выход из curses-режима. Обязательная команда.
 
    return 0; 
