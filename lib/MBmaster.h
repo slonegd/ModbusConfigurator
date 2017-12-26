@@ -94,7 +94,6 @@ public:
                buf[byteQty++] = crc;
                buf[byteQty++] = crc >> 8;
                stream.addData (buf, byteQty, NCURSES::color::tBlue);
-               stream.endLine();
                state = transmit;
                break;
 
@@ -114,7 +113,6 @@ public:
                   } else {
                      byteQty = port.getReadQty();
                      stream.addData (buf, byteQty, NCURSES::color::tGreen);
-                     stream.endLine();
                      state = f == Read_Registers_03    ? handle03 :
                              f == Force_Single_Coil_05 ? handle05 :
                              f == Write_Registers_16   ? handle16 :

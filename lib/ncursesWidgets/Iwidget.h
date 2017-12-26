@@ -9,6 +9,8 @@
 class Iwidget
 {
 public:
+   // отрисовка первоначальная
+   virtual void draw() = 0;
    // отрисовка текущего значения на фоне color
    virtual void drawCurrent(uint8_t color) = 0;
    // обработчик нажатия на enter

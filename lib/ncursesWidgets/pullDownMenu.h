@@ -23,6 +23,7 @@ public:
    bool enter;
 
 
+   // конструктор с названием и со значением в одном поле (мини)
    template <uint8_t n>
 	PullDownMenu (std::wstring (&name)[n], int posY, int posX) 
       : posY (posY), posX (posX), weight(0), name (name), qty(n),
@@ -32,7 +33,28 @@ public:
          weight = ( (int)name[i].size() > weight) ? name[i].size() : weight;
       const int addSpace = 4; // рамки и пробелы
       weight += addSpace; 
+      wstring tmpstr;
+      for (int i = 0; i < qty; ++i) {
+         int tmp;
+         tmp = weight - addSpace - name[i].size();
+         tmpstr = L' ';
+         for (int j = 0; j < tmp; ++j)
+            tmpstr = tmpstr + L' ';
+         name[i] = tmpstr + name[i] + L' ';
+      }
+   }
 
+   // конструктор с заданной шириной полей названия и значения
+   template <uint8_t n>
+	PullDownMenu (std::wstring (&name)[n], int posY, int posX, int nameWeight, int valWeight) 
+      : posY (posY), posX (posX), weight(0), name (name), qty(n),
+        curChoice(1), enter(false)
+   {
+
+   }
+
+   void draw()
+   {
       wstring tmpstr;
       // tmpstr = PSEUDO::upLeft();
       for (int i = 0; i < weight - 2; ++i)
@@ -43,14 +65,6 @@ public:
       tmpstr = PSEUDO::vertical();
       mvaddwstr (posY + 2, posX, tmpstr.c_str() );
       mvaddwstr (posY + 2, posX + weight - 1, tmpstr.c_str() );
-      for (int i = 0; i < qty; ++i) {
-         int tmp;
-         tmp = weight - addSpace - name[i].size();
-         tmpstr = L' ';
-         for (int j = 0; j < tmp; ++j)
-            tmpstr = tmpstr + L' ';
-         name[i] = tmpstr + name[i] + L' ';
-      }
       
       drawName();
       drawCurrent(color::black);

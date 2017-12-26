@@ -10,9 +10,10 @@
 class SerialPort
 {
 public:
+   bool open__;
 
    SerialPort (std::string portFile) 
-      : portFile(portFile), descriptor(-1), open__(false), work(false)
+      : open__(false), portFile(portFile), descriptor(-1), work(false)
    {  }
 
    const std::string portFile;
@@ -39,9 +40,8 @@ public:
       int stopBits,
       int msTimeout )
    {
-      if (open__) {
-         while (close (descriptor) != 0) { }
-      }
+      close_();
+
       descriptor = open (portFile.c_str(), O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
       if (descriptor == -1)
          return false;
@@ -88,6 +88,14 @@ public:
       return true;
    }
 
+   void close_()
+   {
+      if (open__) {
+         while (close (descriptor) != 0) { }
+      }
+      open__ = false;
+   }
+
 
    bool write_ (uint8_t* buf, int qty)
    {
@@ -110,7 +118,7 @@ public:
          } else {
             FD_ZERO (&fds);
             FD_SET (descriptor, &fds);
-            timeoutVal.tv_usec = byteQty == 0 ? 200000 : usEndMes;
+            timeoutVal.tv_usec = byteQty == 0 ? 50000 : usEndMes;
             if ( select (descriptor + 1, &fds, NULL, NULL, &timeoutVal) ) {
                byteQty += read (descriptor, &buf[byteQty], 255);
             } else {
@@ -133,7 +141,6 @@ private:
    int descriptor;
    int byteQty;
    bool timeout;
-   bool open__;
    bool work;
    int usEndMes;
 };

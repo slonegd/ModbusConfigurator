@@ -28,18 +28,21 @@ public:
         enter (false),  setValue (false)
    {
       weight = std::max ( name.size() + 4, 2 * to_wstring(valMax).size() + 4);
-
-      wstring tmpstr;
-      for (int i = 0; i < weight - 2; ++i)
-         tmpstr += PSEUDO::horisontal();
-      mvaddwstr (posY, posX, (PSEUDO::upLeft() + tmpstr + PSEUDO::upRight()).c_str() );
-
       this->name = L"";
       this->name += PSEUDO::vertical();
       for (int i = 0; i < weight - (int)name.size() - 3; ++i)
          this->name += L' ';
       this->name += name + L' ';
       this->name += PSEUDO::vertical();
+   }
+
+
+   void draw()
+   {
+      wstring tmpstr;
+      for (int i = 0; i < weight - 2; ++i)
+         tmpstr += PSEUDO::horisontal();
+      mvaddwstr (posY, posX, (PSEUDO::upLeft() + tmpstr + PSEUDO::upRight()).c_str() );
       drawName();
       drawCurrent(color::black);
       mvaddwstr (posY + 3, posX, (PSEUDO::downLeft() + tmpstr + PSEUDO::downRight()).c_str() );

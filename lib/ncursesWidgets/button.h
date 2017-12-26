@@ -14,7 +14,7 @@ public:
    const int posY;
 	const int posX;
    int weight;
-   bool push;
+
 
    Button (const std::wstring (&name)[2], int posY, int posX)
       : posY (posY), posX (posX), push (false)
@@ -22,7 +22,13 @@ public:
       this->name[0] = L" " + name[0] + L" ";
       weight = this->name[0].size();
       this->name[1] = L" " + name[1] + L" ";
-      weight = max (this->name[0].size(), this->name[1].size() ) + 2;
+      weight = 2 + max (this->name[0].size(), this->name[1].size() );
+
+   }
+
+
+   void draw()
+   {
       mvaddwstr (posY, posX, PSEUDO::upBorder (weight).c_str() );
       wstring tmpstr = L"";
       tmpstr += PSEUDO::vertical();
@@ -44,6 +50,14 @@ public:
    void enterHandler()
    {
       push = !push;
+      drawCurrent(color::green);
+   }
+
+
+   void unPush()
+   {
+      push = false;
+      drawCurrent(color::green);
    }
 
 
@@ -59,6 +73,8 @@ public:
    bool isEnter() { return false; }
 
 private:
+   bool push;
+
    void drawName()
    {
       mvwprintColor (posY + 1, posX + 1, name[0], color::black);
