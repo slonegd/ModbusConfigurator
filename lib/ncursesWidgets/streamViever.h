@@ -42,7 +42,7 @@ public:
       for (int i = 0; i < qty; ++i)
          tmp << uppercase << setw(2) << hex << (uint)buf[i] << ' ';
       tmpstr = tmp.str();
-      while (tmpstr.size() > weight) {
+      while (tmpstr.size() > (uint)weight) {
          mvprintColor ( currentY, posX + 1, tmpstr.substr(0, weight), color_ );
          tmpstr = tmpstr.erase(0, weight);
          endLine();
@@ -69,6 +69,15 @@ public:
       for (int i = 1; i < weight; i++)
          tmpstr += ' ';
       mvaddwstr (currentY, posX + 1, tmpstr.c_str());
+   }
+
+
+   void clean()
+   {
+      wstring tmp = line (weight, L' ');
+      for (int i = 0; i < height; i++)
+         mvaddwstr (i, posX + 1, tmp.c_str());
+      currentY = 0;
    }
 };
 

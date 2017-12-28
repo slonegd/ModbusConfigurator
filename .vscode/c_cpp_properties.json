@@ -34,9 +34,9 @@
                 "/usr/lib/gcc/x86_64-linux-gnu/4.9/include-fixed",
                 "/usr/include/x86_64-linux-gnu",
                 "/usr/include",
-                "${workspaceRoot}",
-                "${workspaceRoot}/lib/ncursesWidgets",
-                "${workspaceRoot}/lib"
+                "./",
+                "./lib/ncursesWidgets",
+                "./lib"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -50,7 +50,9 @@
                     "/usr/lib/gcc/x86_64-linux-gnu/4.9/include-fixed",
                     "/usr/include/x86_64-linux-gnu",
                     "/usr/include",
-                    "${workspaceRoot}"
+                    "./",
+                    "./lib/ncursesWidgets",
+                    "./lib"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

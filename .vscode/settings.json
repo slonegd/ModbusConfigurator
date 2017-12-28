@@ -46,5 +46,12 @@
    },
    "editor.tabSize": 3,
    "C_Cpp.intelliSenseEngineFallback": "Enabled",
-   "C_Cpp.errorSquiggles": "Disabled"
+   "C_Cpp.errorSquiggles": "Disabled",
+   "clang.cxxflags": [
+      "-std=c++1y",
+      "-I.",
+      "-I./lib",
+      "-I./lib/ncursesWidgets",
+      "-lncursesw"
+   ]
 }

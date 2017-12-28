@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <locale.h>
 #include <wchar.h>
-#include <ncursesWidgets.h>
-#include <MBmaster.h>
+#include "ncursesWidgets.h"
+#include "MBmaster.h"
 #include <string>
+
+template<class T, int n> int arrSize (T (&) [n]) { return n; }
 
 using namespace std;
 using namespace NCURSES;
@@ -36,13 +38,92 @@ auto addressValue = ChangeValMenu(L"адрес", 0, stoBitsMenu.weight + stoBits
                                     1, 1, 255 );
 auto openBut      = Button ( open_, 4, 0);
 auto connectBut   = Button ( connect, 4, openBut.weight);
-
+//uint8_t const menuQty = 6;
+Iwidget* menu[] = {
+   &boudrateMenu,
+   &parityMenu,
+   &stoBitsMenu,
+   &addressValue,
+   &openBut,
+   &connectBut
+};
+uint8_t menuQty = arrSize (menu);
 
 // инфопоток модбаса и сам модбас
-auto stream = ModbusStreamViever (addressValue.weight + addressValue.posX + 1);
+auto stream = ModbusStreamViever (addressValue.weight + addressValue.posX);
 auto modbus = MBmaster(stream, portFile);
 using MBstate = MBmaster::State;
 using MBfunc = MBmaster::MBfunc;
+enum BoudrateSet {
+   br9600   = 0b000,
+   br14400  = 0b001,
+   br19200  = 0b010,
+   br28800  = 0b011,
+   br38400  = 0b100,
+   br57600  = 0b101,
+   br76800  = 0b110,
+   br115200 = 0b111
+};
+enum ParitySet {
+   none = 0b00,
+   even = 0b11,
+   odd  = 0b01,
+};
+enum BitsSet {
+   _1 = 0b0,
+   _2 = 0b1
+};
+struct MBsettings {
+   union {
+      struct {
+         ParitySet   parity   :2;
+         BitsSet     bits     :1;
+         BoudrateSet boud     :3;
+      };
+      uint16_t val;
+   };
+   MBsettings() : val(0) { }
+};
+auto set = MBsettings();
 
 
-// меню задания параметров модбаса
+// таблица параметров
+const int nameWeight = 35;
+const int valWeight = 15;
+auto table = Table (7, 0, nameWeight, valWeight, 4);
+auto boudrateSet = PullDownMenu(boudrate, table, 0);
+auto paritySet   = PullDownMenu(parity,   table, 1);
+auto stopBitsSet = PullDownMenu(stopBits, table, 2);
+auto addressSet  = ChangeValMenu(L"адрес", table, 3, 1, 1, 255);
+auto saveBut     = Button(L"сохранить", table.y + table.height, nameWeight + 5);
+auto addBut      = Button(L"дополнительно", saveBut.posY + 3, nameWeight + 1);
+Iwidget* menuSet[] = {
+   &openBut,
+   &connectBut,
+   &boudrateSet,
+   &paritySet,
+   &stopBitsSet,
+   &addressSet,
+   &saveBut,
+   &addBut
+};
+
+
+// название
+auto label = Label (0, 0, stream.posX);
+
+
+// диммер
+auto dimTable = Table (7, 0, nameWeight, valWeight, 1);
+auto dSet   = ChangeValMenu(L"Коэффициент заполнения (0-255)", table, 0, 0, 0, 255);
+auto outBut = Button(L"выход", dimTable.y + dimTable.height, nameWeight + 9);
+Iwidget* dimSet[] = {
+   &openBut,
+   &connectBut,
+   &dSet,
+   &outBut
+};
+
+
+
+

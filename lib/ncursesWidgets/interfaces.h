@@ -4,12 +4,12 @@
 #include <string>
 #include <algorithm>
 #include <wchar.h>
-#include <ncursesExt.h>
+#include "ncursesExt.h"
 
 class Iwidget
 {
 public:
-   // отрисовка первоначальная
+   // отрисовка текста
    virtual void draw() = 0;
    // отрисовка текущего значения на фоне color
    virtual void drawCurrent(uint8_t color) = 0;
@@ -25,5 +25,19 @@ public:
    virtual void enterValHandler (wchar_t ch) = 0;
    // для кнопки нажата ли
    virtual bool isPush() = 0;
+   // 
+   // virtual void drawBox() = 0;
    virtual ~Iwidget() {};
+
+};
+
+
+// интерфейс для таблицы
+class Itabular
+{
+public:
+   // название параметра
+   virtual std::wstring strName() = 0;
+   // текущее значение параметра
+   virtual std::wstring strValue() = 0;
 };

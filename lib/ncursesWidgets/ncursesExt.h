@@ -36,4 +36,23 @@ namespace NCURSES {
       init_pair (tGreen,COLOR_GREEN, COLOR_BLACK);
       init_pair (tRed,  COLOR_RED,   COLOR_BLACK);
    }
+
+   std::wstring addSpaces (const std::wstring& ws, int weight)
+   {
+      std::wstring res = L"";
+      while ( res.size() < weight - ws.size() - 1 )
+         res += L' ';
+      return res + ws + L' ';
+   };
+
+   std::wstring center (const std::wstring& ws, int weight)
+   {
+      std::wstring res1 = L"";
+      std::wstring res2 = L"";
+      for (int i = 0; i < (weight - ws.size()) / 2; i++) 
+         res1 += L' ';
+      while ( (res1.size() + ws.size() + res2.size()) < weight )
+         res2 += L' ';
+      return res1 + ws + res2;
+   };
 }

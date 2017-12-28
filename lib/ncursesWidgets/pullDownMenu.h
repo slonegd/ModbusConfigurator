@@ -1,9 +1,11 @@
 #pragma once
 
-#include <pseudograph.h>
-#include <Iwidget.h>
+#include "pseudograph.h"
+#include "interfaces.h"
+#include "table.h"
 
 using namespace NCURSES;
+using namespace PSEUDO;
 using namespace std;
 
 // меню выбора из выпадающего вниз меню
@@ -11,111 +13,88 @@ using namespace std;
 // первая страка названия меню, вторая - варианты
 // по умолчанию выбран первый вариант
 // так же необходимо задать позицию, откуда отрисовывать
-class PullDownMenu : public Iwidget
+class PullDownMenu : public Iwidget//, public Itabular
 {
 public:
 	int posY;
 	int posX;
    int weight;
+//   int height;
+   int nameWeight;
+   int valWeight;
    std::wstring* name;
    uint8_t qty;
    int curChoice;
    bool enter;
+   int nameY;
+   int nameX;
+   int valY;
+   int valX;
+   int valMaxWeight;
 
 
    // конструктор с названием и со значением в одном поле (мини)
    template <uint8_t n>
 	PullDownMenu (std::wstring (&name)[n], int posY, int posX) 
-      : posY (posY), posX (posX), weight(0), name (name), qty(n),
-        curChoice(1), enter(false)
+      : posY (posY), posX (posX),
+        name (name), qty(n),
+        curChoice(1), enter(false),
+        nameY(posY + 1), nameX(posX + 1), valY(posY + 2), valX(posX + 1)
 	{ 
       for (uint8_t i = 0; i < qty; ++i)
          weight = ( (int)name[i].size() > weight) ? name[i].size() : weight;
-      const int addSpace = 4; // рамки и пробелы
-      weight += addSpace; 
-      wstring tmpstr;
-      for (int i = 0; i < qty; ++i) {
-         int tmp;
-         tmp = weight - addSpace - name[i].size();
-         tmpstr = L' ';
-         for (int j = 0; j < tmp; ++j)
-            tmpstr = tmpstr + L' ';
-         name[i] = tmpstr + name[i] + L' ';
-      }
+      weight += 2; // пробелы
+      nameWeight = valWeight = valMaxWeight = weight;
+      weight += 2; // рамки
    }
 
-   // конструктор с заданной шириной полей названия и значения
+
+   // конструктор с внесением в таблицу
    template <uint8_t n>
-	PullDownMenu (std::wstring (&name)[n], int posY, int posX, int nameWeight, int valWeight) 
-      : posY (posY), posX (posX), weight(0), name (name), qty(n),
-        curChoice(1), enter(false)
+   PullDownMenu (std::wstring (&name)[n], const Table& table, int line)
+      : posY (table.y + line * 2), posX (table.x + table.nameWeight + 1),
+        nameWeight(table.nameWeight), valWeight(table.valWeight),
+        name(name), qty(n),
+        curChoice(1), enter(false),
+        nameY(posY + 1), nameX(table.x + 1), valY(nameY), valX(posX + 1)
    {
-
+      for (uint8_t i = 1; i < qty; ++i)
+         valMaxWeight = ( (int)name[i].size() > valMaxWeight ) 
+                        ? name[i].size() : valMaxWeight;
+      valMaxWeight += 2;
    }
+
 
    void draw()
    {
-      wstring tmpstr;
-      // tmpstr = PSEUDO::upLeft();
-      for (int i = 0; i < weight - 2; ++i)
-         tmpstr += PSEUDO::horisontal();
-      // tmpstr += PSEUDO::upRight();
-      mvaddwstr (posY, posX, (PSEUDO::upLeft() + tmpstr + PSEUDO::upRight()).c_str() );
-      mvaddwstr (posY + 3, posX, (PSEUDO::downLeft() + tmpstr + PSEUDO::downRight()).c_str() );
-      tmpstr = PSEUDO::vertical();
-      mvaddwstr (posY + 2, posX, tmpstr.c_str() );
-      mvaddwstr (posY + 2, posX + weight - 1, tmpstr.c_str() );
-      
-      drawName();
-      drawCurrent(color::black);
-   }
-
-
-   void drawName()
-   {
-      mvaddwstr (posY + 1, posX, (PSEUDO::vertical() + name[0] + PSEUDO::vertical()).c_str());
+      if (nameY == valY)
+         mvaddwstr (nameY, nameX + 1, name[0].c_str() );
+      else
+         mvaddwstr (nameY, nameX, addSpaces (name[0], nameWeight).c_str() );
+      mvaddwstr (valY, valX, addSpaces (name[curChoice], valWeight).c_str() );
+      if (nameX == valX)
+         drawBox(2);
    }
 
 
    void drawCurrent(uint8_t color)
    {
-      mvwprintColor (posY + 2, posX + 1, name[curChoice], color);
+      wstring tmp = addSpaces(name[curChoice], valWeight);
+      mvwprintColor (valY, valX, tmp.c_str(), color);
    }
 
 
-   void drawAll()
-   {
-      uint8_t color;
-      wstring tmpstr = L"";
-      for (int i = 0; i < weight - 2; ++i)
-         tmpstr += PSEUDO::horisontal();
-      mvaddwstr (posY, posX, (PSEUDO::upLeft() + tmpstr + PSEUDO::upRight()).c_str() );
-      wstring vert = L"";
-      vert += PSEUDO::vertical();
-      for (int i = 0; i < qty; ++i) {
-         color = (i != curChoice) ? 4 : 1;
-         mvaddwstr (posY + 1 + i, posX, vert.c_str() );
-         mvwprintColor (posY + 1 + i, posX + 1, name[i], color);
-         mvaddwstr (posY + 1 + i, posX + weight - 1, vert.c_str() );
-      }
-      mvaddwstr (posY + qty + 1, posX, (PSEUDO::downLeft() + tmpstr + PSEUDO::downRight()).c_str() );
-   }
-
-
-   bool isEnter()
-   {
-      return enter;
-   }
+   bool isEnter() { return enter; }
 
 
    void enterHandler()
    {
       enter = !enter;
       if (enter) {
-         scr_dump("dump.out");
+         scr_dump("./screens/dump.out");
          drawAll();
       } else {
-         scr_restore("dump.out");
+         scr_restore("./screens/dump.out");
          drawCurrent(1);
       }
    }
@@ -124,9 +103,8 @@ public:
    void downHandler()
    {
       if (curChoice < qty - 1 && enter ) {
-         mvwprintColor (posY + curChoice + 1, posX + 1, name[curChoice], 4);
          curChoice++;
-         mvwprintColor (posY + curChoice + 1, posX + 1, name[curChoice], 1);
+         drawAll();
       }
    }
 
@@ -134,9 +112,8 @@ public:
    void upHandler()
    {
       if (curChoice > 1 && enter ) {
-         mvwprintColor (posY + curChoice + 1, posX + 1, name[curChoice], 4);
          curChoice--;
-         mvwprintColor (posY + curChoice + 1, posX + 1, name[curChoice], 1);
+         drawAll();
       }
    }
 
@@ -144,6 +121,42 @@ public:
    void enterValHandler (wchar_t ch) { }
    bool isPush() { return false; }
 
+
+
+private:
+   void drawBox (int lines)
+   {
+      int x = posX + valWeight - valMaxWeight;
+      wstring tmp = L"";
+      tmp += upLeft();
+      tmp += line (valMaxWeight, horisontal());
+      tmp += upRight();
+      mvaddwstr (posY, x, tmp.c_str() );
+      tmp.replace(0, 1, 1, downLeft());
+      tmp.replace(valMaxWeight + 1, valMaxWeight + 2, 1, downRight());
+      mvaddwstr (posY + lines + 1, x, tmp.c_str() );
+      tmp = vertical();
+      for (int i = 1; i <= lines; i++) {
+         mvaddwstr (posY + i, x, tmp.c_str() );
+         mvaddwstr (posY + i, x + valMaxWeight + 1, tmp.c_str() );
+      }
+   }
+
+
+   void drawAll()
+   {
+      if (valY == nameY)
+         drawBox (qty - 1);
+      else
+         drawBox (qty);
+      wstring tmp;
+      color col;
+      for (int i = 1; i < qty; i++) {
+         tmp = addSpaces(name[i], valMaxWeight);
+         col = (i == curChoice) ? green : black;
+         mvwprintColor (valY  + i - 1, valX + valWeight - valMaxWeight, tmp.c_str(), col);
+      }
+   }
 };
 
 
