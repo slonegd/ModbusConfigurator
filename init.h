@@ -14,6 +14,13 @@ using namespace NCURSES;
 
 const string portFile = "/dev/ttyUSB0";
 
+const bool debug =
+#if defined DEBUG
+   true;
+#else
+   false;
+#endif
+
 
 // основное меню
 wstring boudrate[] = {
@@ -124,6 +131,17 @@ Iwidget* dimSet[] = {
    &outBut
 };
 
+
+// ДУГ
+auto dynTable = Table (7, 0, nameWeight, valWeight, 1);
+auto dynFreq  = ChangeValMenu(L"Частота в дГц (0-5000)", table, 0, 0, 0, 50000);
+auto transmitBut = Button(L"передать", dynTable.y + dynTable.height, nameWeight + 6);
+Iwidget* dymSet[] = {
+   &openBut,
+   &connectBut,
+   &dynFreq,
+   &transmitBut
+};
 
 
 

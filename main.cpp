@@ -7,7 +7,7 @@ int main()
 {
    setlocale (LC_ALL, "");
    
-   system("resize -s 24 80");
+   system("resize -s 24 180");
    //system("wmctrl -r :ACTIVE: -b add,fullscreen");
    initscr();      // Переход в curses-режим
    curs_set (0);   // невидимый курсор
@@ -30,7 +30,8 @@ int main()
       openPort,
       tryConnect,
       MBSet,
-      dimmer
+      dimmer,
+      dynamic
    } state = startMenu;
    // для определения смены состояний LT - LastTime
    StateWork stateLT = state;
@@ -147,7 +148,7 @@ int main()
          int regAdr;
          regAdr = 0;
          modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, regAdr, 4);
-         if ( modbus.state == MBstate::doneNoErr ) {
+         if ( modbus.state == MBstate::doneNoErr or debug ) {
                state = MBSet;
                set.val = modbus.readBuf[2];
                boudrateSet.curChoice = set.boud == br9600  ? 1 : 
@@ -168,6 +169,9 @@ int main()
             } else if (modbus.readBuf[0] == 2) {
                label.setLabel1 (L"Подключено к ЭО-67 Диммер v4");
                label.setLabel2 (L"прошивка v1.00");
+            } else if (modbus.readBuf[0] == 1 or debug) {
+               label.setLabel1 (L"Подключено к ЭО-74 ДУГ");
+               label.setLabel2 (L"прошивка v1.00");               
             } else {
                state = startMenu;
                connectBut.unPush();
@@ -227,7 +231,7 @@ int main()
                saveBut.unPush();
          }
          if (addBut.isPush()) {
-            state = dimmer;
+            state = debug ? dynamic : dimmer;
             addBut.unPush();
          }
          break;
@@ -274,6 +278,58 @@ int main()
             state = startMenu;
          }
          break;
+///////////////////////////////////////////////////////////////////////////////
+//
+//    МЕНЮ ДУГ
+//
+///////////////////////////////////////////////////////////////////////////////
+      case dynamic:
+         if (enterState) {
+            scr_dump("./screens/mbSet");
+            clear();
+            dynTable.draw();
+            draw (dymSet, 0, arrSize(dymSet) - 1);
+            transmitBut.draw();
+            current = 1;
+            label.draw();
+         }
+         switch (key) {
+            case KEY_UP:
+               if (dymSet[current]->isEnter() )
+                 dymSet[current]->upHandler();
+               else if (current > 1) {
+                 dymSet[current]->drawCurrent(color::black);
+                  current--;
+                 dymSet[current]->drawCurrent(color::green);
+               }
+               break;
+            case KEY_DOWN:
+               if (dymSet[current]->isEnter() )
+                 dymSet[current]->downHandler();
+               else if (current < arrSize(dymSet) - 1) {
+                 dymSet[current]->drawCurrent(color::black);
+                  current++;
+                 dymSet[current]->drawCurrent(color::green);
+               }
+               break;
+            case '\n':    dymSet[current]->enterHandler(); break;
+            case KEY_END: work = false; break; 
+            default:dymSet[current]->enterValHandler(key);  break;
+         }
+         if (transmitBut.isPush()) {
+            int regAdr;
+            regAdr = 4;
+            modbus.tx_rx (MBfunc::Write_Registers_16, addressValue.value, regAdr,
+                          dynFreq.value);
+            if ( modbus.state == MBstate::doneNoErr || modbus.isError() )
+               transmitBut.unPush();
+         }
+         if ( !connectBut.isPush() ) {
+            scr_restore("./screens/main");
+            stream.clean();
+            current = 5;
+            state = startMenu;
+         }
       default: ;
       } // switch (state)
 

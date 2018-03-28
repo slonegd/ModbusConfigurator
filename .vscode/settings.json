@@ -42,7 +42,8 @@
       "ratio": "cpp",
       "thread": "cpp",
       "iomanip": "cpp",
-      "sstream": "cpp"
+      "sstream": "cpp",
+      "slist": "cpp"
    },
    "editor.tabSize": 3,
    "C_Cpp.intelliSenseEngineFallback": "Enabled",
