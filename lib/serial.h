@@ -118,7 +118,7 @@ public:
          } else {
             FD_ZERO (&fds);
             FD_SET (descriptor, &fds);
-            timeoutVal.tv_usec = byteQty == 0 ? 50000 : usEndMes;
+            timeoutVal.tv_usec = byteQty == 0 ? 5000 : usEndMes;
             if ( select (descriptor + 1, &fds, NULL, NULL, &timeoutVal) ) {
                byteQty += read (descriptor, &buf[byteQty], 255);
             } else {

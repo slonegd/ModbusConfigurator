@@ -143,5 +143,13 @@ Iwidget* dymSet[] = {
    &transmitBut
 };
 
+// Ген с измерениями
+auto frequencyLabel = Label (7  , 0, stream.posX);
+auto currentLabel   = Label (7+4, 0, stream.posX);
+Iwidget* measureAdd[] = {
+   &openBut,
+   &connectBut
+};
+
 
 

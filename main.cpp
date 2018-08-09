@@ -3,6 +3,8 @@
 using namespace std;
 using namespace NCURSES;
 
+uint16_t device {0};
+
 int main() 
 {
    setlocale (LC_ALL, "");
@@ -31,7 +33,9 @@ int main()
       tryConnect,
       MBSet,
       dimmer,
-      dynamic
+      dynamic,
+      measure,
+      pro1
    } state = startMenu;
    // для определения смены состояний LT - LastTime
    StateWork stateLT = state;
@@ -163,15 +167,23 @@ int main()
                table.draw();
                draw (menuSet, 2, arrSize(menuSet) - 2);
                current = 1;
-            if (modbus.readBuf[0] == 4) {
+               device = debug ? 6 : modbus.readBuf[0];
+
+            if (device == 4) {
                label.setLabel1 (L"Подключено к ЭО-81 Контроллер УОВ");
                label.setLabel2 (L"прошивка v1.00");
-            } else if (modbus.readBuf[0] == 2) {
+            } else if (device == 2) {
                label.setLabel1 (L"Подключено к ЭО-67 Диммер v4");
                label.setLabel2 (L"прошивка v1.00");
-            } else if (modbus.readBuf[0] == 1 or debug) {
+            } else if (device == 1) {
                label.setLabel1 (L"Подключено к ЭО-74 ДУГ");
-               label.setLabel2 (L"прошивка v1.00");               
+               label.setLabel2 (L"прошивка v1.00");     
+            } else if (device == 5) {
+               label.setLabel1 (L"Подключено к ЭО-84 ген с измерениями");
+               label.setLabel2 (L"прошивка v1.00");
+            } else if (device == 6) {
+               label.setLabel1 (L"Подключено к ЭО-72 цифровой прототип 1");
+               label.setLabel2 (L"прошивка v1.00");
             } else {
                state = startMenu;
                connectBut.unPush();
@@ -231,7 +243,11 @@ int main()
                saveBut.unPush();
          }
          if (addBut.isPush()) {
-            state = debug ? dynamic : dimmer;
+            state = device == 1 ? dynamic :
+                    device == 2 ? dimmer  :
+                    device == 4 ? MBSet   : // placeholder
+                    device == 5 ? measure :
+                    device == 6 ? pro1    : MBSet;
             addBut.unPush();
          }
          break;
@@ -287,7 +303,7 @@ int main()
          if (enterState) {
             scr_dump("./screens/mbSet");
             clear();
-            dynTable.draw();
+            // dynTable.draw();
             draw (dymSet, 0, arrSize(dymSet) - 1);
             transmitBut.draw();
             current = 1;
@@ -330,12 +346,126 @@ int main()
             current = 5;
             state = startMenu;
          }
+///////////////////////////////////////////////////////////////////////////////
+//
+//    МЕНЮ ГЕНА С ИЗМЕРЕНИЯМИ
+//
+///////////////////////////////////////////////////////////////////////////////
+      case measure:
+         if (enterState) {
+            scr_dump("./screens/mbSet");
+            clear();
+            frequencyLabel.draw();
+            currentLabel.draw();
+            draw (measureAdd, 0, arrSize(measureAdd));
+            current = 1;
+            measureAdd[current]->drawCurrent(color::green);
+            label.draw();
+         }
+         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, 4, 2);
+            if ( modbus.state == MBstate::doneNoErr ) {
+               frequencyLabel.setLabel1 (L"Частота " + to_wstring(modbus.readBuf[0]));
+               currentLabel.setLabel1   (L"Ток "     + to_wstring(modbus.readBuf[1]));
+               frequencyLabel.draw();
+               currentLabel.draw();
+            }
+
+         switch (key) {
+            case KEY_UP:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->upHandler();
+               else if (current > 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current--;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case KEY_DOWN:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->downHandler();
+               else if (current < arrSize(measureAdd) - 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current++;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case '\n':    measureAdd[current]->enterHandler(); break;
+            case KEY_END: work = false; break; 
+            default:measureAdd[current]->enterValHandler(key);  break;
+         }
+
+         if ( !connectBut.isPush() ) {
+            scr_restore("./screens/main");
+            stream.clean();
+            current = 5;
+            state = startMenu;
+         }
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//    МЕНЮ ЦИФРОВОГО ПРОТОТИП 1
+//
+///////////////////////////////////////////////////////////////////////////////
+      case pro1:
+         if (enterState) {
+            scr_dump("./screens/mbSet");
+            clear();
+            frequencyLabel.draw();
+            currentLabel.draw();
+            draw (measureAdd, 0, arrSize(measureAdd));
+            current = 1;
+            measureAdd[current]->drawCurrent(color::green);
+            label.draw();
+         }
+         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, 4, 2);
+         if ( modbus.state == MBstate::doneNoErr ) {
+            frequencyLabel.setLabel1 (L"Частота " + to_wstring(modbus.readBuf[0]));
+            currentLabel.setLabel1   (L"Ток "     + to_wstring(modbus.readBuf[1]));
+            frequencyLabel.draw();
+            currentLabel.draw();
+         }
+
+         switch (key) {
+            case KEY_UP:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->upHandler();
+               else if (current > 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current--;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case KEY_DOWN:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->downHandler();
+               else if (current < arrSize(measureAdd) - 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current++;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case '\n':    measureAdd[current]->enterHandler(); break;
+            case KEY_END: work = false; break; 
+            default:measureAdd[current]->enterValHandler(key);  break;
+         }
+
+         if ( !connectBut.isPush() ) {
+            scr_restore("./screens/main");
+            stream.clean();
+            current = 5;
+            state = startMenu;
+         }
+
+
       default: ;
       } // switch (state)
 
       enterState = state != stateLT;
       stateLT = state;
    } // while (1)
+
+
+
 
 
 
