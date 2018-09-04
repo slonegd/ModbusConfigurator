@@ -151,5 +151,14 @@ Iwidget* measureAdd[] = {
    &connectBut
 };
 
+// Ген прототип
+namespace PRO1 {
+auto frequencyLabel = Label (7 + 4*0, 0, stream.posX);
+auto ratioLabel     = Label (7 + 4*1, 0, stream.posX);
+auto powerLabel     = Label (7 + 4*2, 0, stream.posX);
+auto voltageLabel   = Label (7 + 4*3, 0, stream.posX);
+auto currentLabel   = Label (7 + 4*4, 0, stream.posX);
+}
+
 
 

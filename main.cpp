@@ -5,6 +5,8 @@ using namespace NCURSES;
 
 uint16_t device {0};
 
+bool done {false};
+
 int main() 
 {
    setlocale (LC_ALL, "");
@@ -410,21 +412,30 @@ int main()
          if (enterState) {
             scr_dump("./screens/mbSet");
             clear();
-            frequencyLabel.draw();
-            currentLabel.draw();
+            PRO1::frequencyLabel.draw();
+            PRO1::ratioLabel    .draw();
+            PRO1::powerLabel    .draw();
+            PRO1::voltageLabel  .draw();
+            PRO1::currentLabel  .draw();
             draw (measureAdd, 0, arrSize(measureAdd));
             current = 1;
             measureAdd[current]->drawCurrent(color::green);
             label.draw();
          }
-         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, 4, 2);
+         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, 4, 5);
          if ( modbus.state == MBstate::doneNoErr ) {
-            frequencyLabel.setLabel1 (L"Частота " + to_wstring(modbus.readBuf[0]));
-            currentLabel.setLabel1   (L"Ток "     + to_wstring(modbus.readBuf[1]));
-            frequencyLabel.draw();
-            currentLabel.draw();
+            PRO1::frequencyLabel.setLabel1 (L"Частота "     + to_wstring(modbus.readBuf[0]));
+            PRO1::ratioLabel    .setLabel1 (L"Коэффициент " + to_wstring(modbus.readBuf[1]) + L"%");
+            PRO1::powerLabel    .setLabel1 (L"Мощность "    + to_wstring(modbus.readBuf[2]));
+            PRO1::voltageLabel  .setLabel1 (L"Напряжение "  + to_wstring(modbus.readBuf[3]));
+            PRO1::currentLabel  .setLabel1 (L"Ток "         + to_wstring(modbus.readBuf[4]));
+            PRO1::frequencyLabel.draw();
+            PRO1::ratioLabel    .draw();
+            PRO1::powerLabel    .draw();
+            PRO1::voltageLabel  .draw();
+            PRO1::currentLabel  .draw();
          }
-
+       
          switch (key) {
             case KEY_UP:
                if (measureAdd[current]->isEnter() )
