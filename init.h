@@ -156,9 +156,16 @@ namespace PRO1 {
 auto frequencyLabel = Label (7 + 4*0, 0, stream.posX);
 auto ratioLabel     = Label (7 + 4*1, 0, stream.posX);
 auto powerLabel     = Label (7 + 4*2, 0, stream.posX);
-auto voltageLabel   = Label (7 + 4*3, 0, stream.posX);
-auto currentLabel   = Label (7 + 4*4, 0, stream.posX);
+auto setLabel       = Label (7 + 4*3, 0, stream.posX);
+auto constexpr adr {4};
+auto constexpr cnt {10};
 }
 
 
-
+namespace SI {
+auto coordinate = Label (7 + 4*0, 0, stream.posX);
+auto sensor     = Label (7 + 4*1, 0, stream.posX);
+auto state      = Label (7 + 4*2, 0, stream.posX);
+auto constexpr adr {6};
+auto constexpr cnt {3};
+}

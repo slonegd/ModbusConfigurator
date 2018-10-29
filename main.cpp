@@ -37,7 +37,8 @@ int main()
       dimmer,
       dynamic,
       measure,
-      pro1
+      pro1,
+      si
    } state = startMenu;
    // для определения смены состояний LT - LastTime
    StateWork stateLT = state;
@@ -186,6 +187,9 @@ int main()
             } else if (device == 6) {
                label.setLabel1 (L"Подключено к ЭО-72 цифровой прототип 1");
                label.setLabel2 (L"прошивка v1.00");
+            } else if (device == 7) {
+               label.setLabel1 (L"Подключено к ЭО-94 счётчик импульсов");
+               label.setLabel2 (L"");
             } else {
                state = startMenu;
                connectBut.unPush();
@@ -252,7 +256,7 @@ int main()
                     device == 6 ? pro1    : MBSet;
             addBut.unPush();
          }
-         break;
+      break;
 ///////////////////////////////////////////////////////////////////////////////
 //
 //    МЕНЮ ДИММЕРА
@@ -266,6 +270,7 @@ int main()
             current = 1;
             label.draw();
          }
+         modbus.tx_rx (MBfunc::Write_Registers_16, addressValue.value, 4, dSet.value);
          switch (key) {
             case KEY_UP:
                if (dimSet[current]->isEnter() )
@@ -295,7 +300,7 @@ int main()
             current = 1;
             state = startMenu;
          }
-         break;
+      break;
 ///////////////////////////////////////////////////////////////////////////////
 //
 //    МЕНЮ ДУГ
@@ -348,6 +353,7 @@ int main()
             current = 5;
             state = startMenu;
          }
+      break;
 ///////////////////////////////////////////////////////////////////////////////
 //
 //    МЕНЮ ГЕНА С ИЗМЕРЕНИЯМИ
@@ -402,7 +408,7 @@ int main()
             current = 5;
             state = startMenu;
          }
-
+      break;
 ///////////////////////////////////////////////////////////////////////////////
 //
 //    МЕНЮ ЦИФРОВОГО ПРОТОТИП 1
@@ -415,25 +421,37 @@ int main()
             PRO1::frequencyLabel.draw();
             PRO1::ratioLabel    .draw();
             PRO1::powerLabel    .draw();
-            PRO1::voltageLabel  .draw();
-            PRO1::currentLabel  .draw();
+            PRO1::setLabel      .draw();
             draw (measureAdd, 0, arrSize(measureAdd));
             current = 1;
             measureAdd[current]->drawCurrent(color::green);
             label.draw();
          }
-         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, 4, 5);
+         
+         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, PRO1::adr, PRO1::cnt);
          if ( modbus.state == MBstate::doneNoErr ) {
-            PRO1::frequencyLabel.setLabel1 (L"Частота "     + to_wstring(modbus.readBuf[0]));
-            PRO1::ratioLabel    .setLabel1 (L"Коэффициент " + to_wstring(modbus.readBuf[1]) + L"%");
-            PRO1::powerLabel    .setLabel1 (L"Мощность "    + to_wstring(modbus.readBuf[2]));
-            PRO1::voltageLabel  .setLabel1 (L"Напряжение "  + to_wstring(modbus.readBuf[3]));
-            PRO1::currentLabel  .setLabel1 (L"Ток "         + to_wstring(modbus.readBuf[4]));
+            PRO1::frequencyLabel.setLabel1 (
+                L"Частота min: " + to_wstring(modbus.readBuf[9] - modbus.readBuf[8])
+              + L" текущая: "    + to_wstring(modbus.readBuf[0])
+              + L" max: "        + to_wstring(modbus.readBuf[9] + modbus.readBuf[7])
+            );
+            PRO1::ratioLabel    .setLabel1 (L"Коэффициент "  + to_wstring(modbus.readBuf[1]) + L"/1000");
+            PRO1::powerLabel    .setLabel1 (L"Мощность "     + to_wstring(modbus.readBuf[2]));
+            PRO1::setLabel      .setLabel1 (
+               modbus.readBuf[6] == 0 ? L"Включить/выключить " :
+               modbus.readBuf[6] == 1 ? L"Задание частоты "      + to_wstring(modbus.readBuf[0]) : 
+               modbus.readBuf[6] == 2 ? L"Задание частоты х10 "  + to_wstring(modbus.readBuf[0]) : 
+               modbus.readBuf[6] == 3 ? L"Задание частоты х100 " + to_wstring(modbus.readBuf[0]) : 
+               modbus.readBuf[6] == 4 ? L"Задание мощности "     + to_wstring(modbus.readBuf[5]) : 
+               modbus.readBuf[6] == 5 ? L"Задание мощности х10 " + to_wstring(modbus.readBuf[5]) : 
+               modbus.readBuf[6] == 6 ? L"Задание +перестройки " + to_wstring(modbus.readBuf[7]) : 
+               modbus.readBuf[6] == 7 ? L"Задание -перестройки " + to_wstring(modbus.readBuf[8]) : 
+            L"");
             PRO1::frequencyLabel.draw();
             PRO1::ratioLabel    .draw();
             PRO1::powerLabel    .draw();
-            PRO1::voltageLabel  .draw();
-            PRO1::currentLabel  .draw();
+            PRO1::setLabel      .draw();
+
          }
        
          switch (key) {
@@ -457,7 +475,7 @@ int main()
                break;
             case '\n':    measureAdd[current]->enterHandler(); break;
             case KEY_END: work = false; break; 
-            default:measureAdd[current]->enterValHandler(key);  break;
+            default: measureAdd[current]->enterValHandler(key);  break;
          }
 
          if ( !connectBut.isPush() ) {
@@ -466,9 +484,96 @@ int main()
             current = 5;
             state = startMenu;
          }
+         break;
+///////////////////////////////////////////////////////////////////////////////
+//
+//    СЧЁТЧИК ИМПУЛЬСОВ
+//
+///////////////////////////////////////////////////////////////////////////////
+      case si:
+         if (enterState) {
+            scr_dump("./screens/mbSet");
+            clear();
+            SI::coordinate.draw();
+            SI::sensor    .draw();
+            SI::state     .draw();
+            draw (measureAdd, 0, arrSize(measureAdd));
+            current = 1;
+            measureAdd[current]->drawCurrent(color::green);
+            label.draw();
+         }
+         modbus.tx_rx (MBfunc::Read_Registers_03, addressValue.value, SI::adr, SI::cnt);
+         if ( modbus.state == MBstate::doneNoErr ) {
+            SI::coordinate.setLabel1 (L"Координата: " + to_wstring(modbus.readBuf[0]));
+            std::wstring tmp{};
+            if (bool(modbus.readBuf[1] & 0b000001)) tmp += L"right ";
+            if (bool(modbus.readBuf[1] & 0b000010)) tmp += L"left ";
+            if (bool(modbus.readBuf[1] & 0b000100)) tmp += L"till ";
+            if (bool(modbus.readBuf[1] & 0b001000)) tmp += L"begin ";
+            if (bool(modbus.readBuf[1] & 0b010000)) tmp += L"hi ";
+            if (bool(modbus.readBuf[1] & 0b100000)) tmp += L"lo ";
+            SI::sensor.setLabel1 (tmp);
+            tmp = (modbus.readBuf[2] & 0b111) == 0b000 ? L"wait " :
+                  (modbus.readBuf[2] & 0b111) == 0b001 ? L"auto " :
+                  (modbus.readBuf[2] & 0b111) == 0b010 ? L"manual " :
+                  (modbus.readBuf[2] & 0b111) == 0b011 ? L"search " :
+                  (modbus.readBuf[2] & 0b111) == 0b100 ? L"calib " :
+                  (modbus.readBuf[2] & 0b111) == 0b101 ? L"avaria " : L"";
+            if (bool(modbus.readBuf[2] & (1 <<  3))) tmp += L"up ";
+            if (bool(modbus.readBuf[2] & (1 <<  4))) tmp += L"down ";
+            if (bool(modbus.readBuf[2] & (1 <<  5))) tmp += L"right ";
+            if (bool(modbus.readBuf[2] & (1 <<  6))) tmp += L"left ";
+            if (bool(modbus.readBuf[2] & (1 <<  7))) tmp += L"fast_stop ";
+            if (bool(modbus.readBuf[2] & (1 <<  8))) tmp += L"slow_stop ";
+            if (bool(modbus.readBuf[2] & (1 <<  9))) tmp += L"hi_speed ";
+            if (bool(modbus.readBuf[2] & (1 << 10))) tmp += L"lo_speed ";
+            if (bool(modbus.readBuf[2] & (1 << 11))) tmp += L"h_stop ";
+            if (bool(modbus.readBuf[2] & (1 << 12))) tmp += L"v_stop ";
+            if (bool(modbus.readBuf[2] & (1 << 13))) tmp += L"enable ";
+            if (bool(modbus.readBuf[2] & (1 << 13))) tmp += L"lost ";
+            SI::state.setLabel1 (tmp);
+            SI::coordinate.draw();
+            SI::sensor    .draw();
+            SI::state     .draw();
+         }
+       
+         switch (key) {
+            case KEY_UP:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->upHandler();
+               else if (current > 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current--;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case KEY_DOWN:
+               if (measureAdd[current]->isEnter() )
+                 measureAdd[current]->downHandler();
+               else if (current < arrSize(measureAdd) - 1) {
+                 measureAdd[current]->drawCurrent(color::black);
+                 current++;
+                 measureAdd[current]->drawCurrent(color::green);
+               }
+               break;
+            case '\n':    measureAdd[current]->enterHandler(); break;
+            case KEY_END: work = false; break; 
+            default: measureAdd[current]->enterValHandler(key);  break;
+         }
 
-
-      default: ;
+         if ( !connectBut.isPush() ) {
+            scr_restore("./screens/main");
+            stream.clean();
+            current = 5;
+            state = startMenu;
+         }
+         break;
+///////////////////////////////////////////////////////////////////////////////
+//
+//    КОНЕЦ
+//
+///////////////////////////////////////////////////////////////////////////////
+      // default: ;
       } // switch (state)
 
       enterState = state != stateLT;
